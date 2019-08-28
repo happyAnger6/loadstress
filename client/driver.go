@@ -1,13 +1,18 @@
 package client
 
+import (
+	"loadstress/messages"
+	"context"
+)
+
 type CreateOpts struct {
 	Opts map[string]string
 }
 
 type ClientConnection interface{
-	BuildReq()
-	Call()
-	BuildResp()
+	BuildReq() loadstress_messages.SimpleRequest
+	Call(ctx context.Context, request *loadstress_messages.SimpleRequest) (loadstress_messages.SimpleResponse, error)
+	BuildResp(response loadstress_messages.SimpleResponse)
 }
 
 type ConnectionDriver interface {

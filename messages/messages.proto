@@ -14,6 +14,13 @@ enum PayloadType {
   RANDOM = 2;
 }
 
+enum RetStatus {
+  SUCCESS = 0;
+  CALL_FAILED = 1;
+  CALL_TIMEOUT = 2;
+  CALL_RET_ERROR = 3;
+}
+
 message Payload {
   // The type of data in body.
   PayloadType type = 1;
@@ -35,4 +42,11 @@ message SimpleResponse {
   int64 req_size = 2;
 
   Payload payload = 3;
+}
+
+message CallResult {
+  SimpleResponse resp = 1;
+  RetStatus status = 2;
+  string errmsg = 3;
+  uint64 elapsed = 4;
 }
