@@ -34,5 +34,5 @@ message SimpleResponse {
 
   int64 req_size = 2;
 
-  Payload payload = 2;
+  Payload payload = 3;
 }
