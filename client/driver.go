@@ -4,8 +4,10 @@ type CreateOpts struct {
 	Opts map[string]string
 }
 
-type ClientConnection struct {
-
+type ClientConnection interface{
+	BuildReq()
+	Call()
+	BuildResp()
 }
 
 type ConnectionDriver interface {
@@ -13,16 +15,9 @@ type ConnectionDriver interface {
 	CloseConnection(cliCon *ClientConnection) (error)
 }
 
-type CallDriver interface {
-	BuildReq()
-	Call()
-	GetResp()
-}
-
 type Driver interface {
 	Name() string
 	ConnectionDriver
-	CallDriver
 }
 
 type InitFunc func(root string, options []string) (Driver, error)

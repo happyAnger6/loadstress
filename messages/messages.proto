@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package loadstress.messages;
+
+// The type of payload that should be returned.
+enum PayloadType {
+  // Compressable text format.
+  COMPRESSABLE = 0;
+
+  // Uncompressable binary format.
+  UNCOMPRESSABLE = 1;
+
+  // Randomly chosen from all other formats defined in this enum.
+  RANDOM = 2;
+}
+
+message Payload {
+  // The type of data in body.
+  PayloadType type = 1;
+  // Primary contents of payload.
+  bytes body = 2;
+}
+
+message SimpleRequest {
+  int64 req_id = 1;
+
+  int64 req_size = 2;
+
+  Payload payload = 3;
+}
+
+message SimpleResponse {
+  int64 resp_id = 1;
+
+  int64 req_size = 2;
+
+  Payload payload = 2;
+}
