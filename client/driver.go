@@ -7,7 +7,7 @@ import (
 )
 
 type CreateOpts struct {
-	Opts map[string]string
+	Opts map[string]interface{}
 }
 
 type ClientConnection interface{
