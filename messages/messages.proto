@@ -41,7 +41,9 @@ message SimpleResponse {
 
   int64 req_size = 2;
 
-  Payload payload = 3;
+  int64 elapse = 3;
+
+  Payload payload = 4;
 }
 
 message CallResult {

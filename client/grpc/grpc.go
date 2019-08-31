@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 	pb "google.golang.org/grpc/examples/helloworld/helloworld"
+	"github.com/square/go-jose/json"
+	"google.golang.org/grpc/codes"
 )
 
 type Driver struct {
@@ -21,6 +24,19 @@ type GrpcConnection struct {
 	conn *grpc.ClientConn
 	driver *Driver
 	callTimeout time.Duration
+}
+
+type GrpcResp struct {
+	RespMsg string
+	Status *status.Status
+}
+
+func GrpcRespToBytes(r *GrpcResp) []byte {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 func Init() (client.Driver, error){
@@ -81,22 +97,47 @@ func (c *GrpcConnection) Call(ctx context.Context, request *loadstress_messages.
 	}
 	cc := pb.NewGreeterClient(c.conn)
 
-	cctx, cancel := context.WithTimeout(ctx, c.callTimeout*time.Second)
-	defer cancel()
+	respMsg := GrpcResp{
+		RespMsg: nil,
+		Status: nil,
+	}
 
-	r, err := cc.SayHello(cctx, &pb.HelloRequest{Name: defaultName})
+	r, err := cc.SayHello(ctx, &pb.HelloRequest{Name: defaultName})
 	if err != nil{
-		resp.Payload.Body = r.XXX_NoUnkeyedLiteral
+		s, ok := status.FromError(err)
+		if ok {
+			respMsg.Status = s
+		}
+	}
+
+	respMsg.RespMsg = r.GetMessage()
+	data, err := json.Marshal(respMsg)
+	if err != nil {
+		resp.Payload.Body = data
 	}
 	return &resp, nil
 }
 
-
-func (c *GrpcConnection) BuildResp(response *loadstress_messages.SimpleResponse) (*loadstress_messages.CallResult, error){
-	result := loadstress_messages.CallResult{
-
+func grpcCode2RetStatus(code codes.Code) loadstress_messages.RetStatus {
+	switch code {
+	case codes.OK:
+		return loadstress_messages.RetStatus_SUCCESS
+	case codes.DeadlineExceeded:
+		return loadstress_messages.RetStatus_CALL_TIMEOUT
+	default:
+		return loadstress_messages.RetStatus_CALL_FAILED
 	}
+}
 
+func (c *GrpcConnection) BuildResp(response *loadstress_messages.SimpleResponse, elapse time.Duration) (*loadstress_messages.CallResult, error){
+	var respMsg GrpcResp
+	json.Unmarshal(response.Payload.Body, &respMsg)
+
+	result := loadstress_messages.CallResult{
+		Errmsg: respMsg.Status.Err().Error(),
+		Status: grpcCode2RetStatus(respMsg.Status.Code()),
+		Elapsed: uint64(elapse),
+	}
 	return &result, nil
 }
 
