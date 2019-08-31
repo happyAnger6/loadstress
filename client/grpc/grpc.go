@@ -102,6 +102,7 @@ func (c *GrpcConnection) Call(ctx context.Context, request *loadstress_messages.
 		Status: nil,
 	}
 
+	start := time.Now()
 	r, err := cc.SayHello(ctx, &pb.HelloRequest{Name: defaultName})
 	if err != nil{
 		s, ok := status.FromError(err)
@@ -109,7 +110,8 @@ func (c *GrpcConnection) Call(ctx context.Context, request *loadstress_messages.
 			respMsg.Status = s
 		}
 	}
-
+	elapse := time.Since(start)
+	resp.Elapse = int64(elapse)
 	respMsg.RespMsg = r.GetMessage()
 	data, err := json.Marshal(respMsg)
 	if err != nil {

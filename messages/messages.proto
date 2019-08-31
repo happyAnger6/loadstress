@@ -50,5 +50,5 @@ message CallResult {
   SimpleResponse resp = 1;
   RetStatus status = 2;
   string errmsg = 3;
-  uint64 elapsed = 4;
+  int64 elapsed = 4;
 }
