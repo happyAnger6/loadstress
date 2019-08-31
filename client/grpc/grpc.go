@@ -104,12 +104,11 @@ func (c *GrpcConnection) Call(ctx context.Context, request *loadstress_messages.
 
 	start := time.Now()
 	r, err := cc.SayHello(ctx, &pb.HelloRequest{Name: defaultName})
-	if err != nil{
-		s, ok := status.FromError(err)
-		if ok {
-			respMsg.Status = s
-		}
+	s, ok := status.FromError(err)
+	if ok {
+		respMsg.Status = s
 	}
+
 	elapse := time.Since(start)
 	resp.Elapse = int64(elapse)
 	respMsg.RespMsg = r.GetMessage()
@@ -131,14 +130,15 @@ func grpcCode2RetStatus(code codes.Code) loadstress_messages.RetStatus {
 	}
 }
 
-func (c *GrpcConnection) BuildResp(response *loadstress_messages.SimpleResponse, elapse time.Duration) (*loadstress_messages.CallResult, error){
+func (c *GrpcConnection) BuildResp(response *loadstress_messages.SimpleResponse) (*loadstress_messages.CallResult, error){
 	var respMsg GrpcResp
 	json.Unmarshal(response.Payload.Body, &respMsg)
 
 	result := loadstress_messages.CallResult{
+		Resp: response,
 		Errmsg: respMsg.Status.Err().Error(),
 		Status: grpcCode2RetStatus(respMsg.Status.Code()),
-		Elapsed: uint64(elapse),
+		Elapsed: response.Elapse,
 	}
 	return &result, nil
 }
