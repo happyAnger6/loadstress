@@ -124,7 +124,6 @@ func sendResult(r *loadstress_messages.CallResult) bool {
 }
 
 func asynCall(ctx context.Context, conn client.ClientConnection) error {
-	wg.Add(1)
 	defer wg.Done()
 
 	req, err :=  conn.BuildReq()
@@ -147,6 +146,7 @@ func runQps(ctx context.Context, conn client.ClientConnection) error {
 		case <-ctx.Done():
 			return stop(ctx.Err())
 		default:
+			wg.Add(1)
 			go asynCall(ctx, conn)
 		}
 	}
