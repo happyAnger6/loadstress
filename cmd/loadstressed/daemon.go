@@ -9,6 +9,17 @@ import (
 
 	"loadstress/client"
 	"loadstress/messages"
+	"fmt"
+	"github.com/sirupsen/logrus"
+	"go1.12.5.src/go/src/sync/atomic"
+)
+
+const (
+	STATUS_INT int32 = 0
+	STATUS_STARTING
+	STATUS_RUNNING
+	STATUS_STOPPING
+	STATUS_STOPPED
 )
 
 var (
@@ -20,6 +31,9 @@ var (
 	wg       sync.WaitGroup
 	mu    sync.Mutex
 	testDriver client.Driver
+	restulCh = make(chan *loadstress_messages.CallResult, 100)
+	status = STATUS_INT
+	logger = logrus.New()
 )
 
 func init() {
@@ -36,10 +50,35 @@ func main() {
 	deadline := time.Duration(*duration) * time.Second
 	deadlineContext, deadlineCancel := context.WithDeadline(context.Background(), time.Now().Add(deadline))
 	defer deadlineCancel()
+
+	status = STATUS_RUNNING
 	css := buildConnections(connectContext)
 	for _, cs := range css {
-		runWithConnection(deadlineContext, cs)
+		go runWithConnection(deadlineContext, cs)
 	}
+
+	for {
+		select {
+		case <-deadlineContext.Done():
+			stop(deadlineContext.Err())
+			wg.Wait()
+			close(restulCh)
+			logger.Infof("finished loadstess.")
+			return
+		case r := <-restulCh:
+			fmt.Printf("callId:%d result:%v elapsed:%d ns\n", r.Resp.RespId, r.Status, r.Elapsed)
+		}
+	}
+
+}
+
+func stop(err error) error{
+	logger.Infof("stop loadstress because of:%s\n", err)
+	if(!atomic.CompareAndSwapInt32(&status, STATUS_RUNNING, STATUS_STOPPING)){
+		return nil
+	}
+	atomic.StoreInt32(&status, STATUS_STOPPED)
+	return nil
 }
 
 func buildConnections(ctx context.Context) []client.ClientConnection {
@@ -55,23 +94,61 @@ func buildConnections(ctx context.Context) []client.ClientConnection {
 }
 
 func runWithConnection(ctx context.Context, conn client.ClientConnection) error {
+	throttle := time.Tick(time.Second)
+	for {
+		select {
+		case <- ctx.Done():
+			return stop(ctx.Err())
+		case <- throttle:
+			runQps(ctx, conn)
+		}
+	}
+}
+
+func handleCallError(req *loadstress_messages.SimpleRequest, err error) {
+
+}
+
+func sendResult(r *loadstress_messages.CallResult) bool {
+	if(atomic.LoadInt32(&status) != STATUS_RUNNING) {
+		return false
+	}
+
+	select {
+		case restulCh <- r:
+			return true
+		default:
+			logger.Warn("result channel full")
+			return false
+	}
+}
+
+func asynCall(ctx context.Context, conn client.ClientConnection) error {
+	wg.Add(1)
+	defer wg.Done()
+
+	req, err :=  conn.BuildReq()
+	if err != nil {
+		handleCallError(req, err)
+		return err
+	}
+
+	resp, _ := conn.Call(ctx, req)
+
+	callResult, _ := conn.BuildResp(resp)
+	sendResult(callResult)
+
 	return nil
 }
 
 func runQps(ctx context.Context, conn client.ClientConnection) error {
-	select {
-		case <- ctx.Done():
-			return nil
-	}
 	for i := 0; i < *qps; i++ {
-		wg.Add(1)
-		go func() {
-			var req *loadstress_messages.SimpleRequest
-			var resp *loadstress_messages.SimpleResponse
-			defer wg.Done()
-			req, _ = conn.BuildReq()
-			resp, _ = conn.Call(ctx, req)
-			conn.BuildResp(resp)
-		}()
+		select {
+		case <-ctx.Done():
+			return stop(ctx.Err())
+		default:
+			go asynCall(ctx, conn)
+		}
 	}
+	return nil
 }

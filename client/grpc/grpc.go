@@ -18,6 +18,8 @@ import (
 
 type Driver struct {
 	id int64
+	host string
+	port int
 }
 
 type GrpcConnection struct {
@@ -31,6 +33,10 @@ type GrpcResp struct {
 	Status *status.Status
 }
 
+func init() {
+	client.Register("grpc", Init)
+}
+
 func GrpcRespToBytes(r *GrpcResp) []byte {
 	data, err := json.Marshal(r)
 	if err != nil {
@@ -39,9 +45,12 @@ func GrpcRespToBytes(r *GrpcResp) []byte {
 	return data
 }
 
-func Init() (client.Driver, error){
-	d := &Driver {}
-
+func Init(root string, opts *client.DriverOpts) (client.Driver, error){
+	d := &Driver{
+		id: 0,
+		host: opts.Host,
+		port: opts.Port,
+	}
 	return d, nil
 }
 
@@ -54,8 +63,8 @@ func (d* Driver) GenerateID() int64 {
 }
 
 func (d *Driver) CreateConnection(ctx context.Context, opts *client.CreateOpts) (client.ClientConnection, error){
-	host := opts.Opts["host"]
-	port := opts.Opts["port"]
+	host := d.host
+	port := d.port
 	addr := fmt.Sprintf("%s:%s", host, port)
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
 	if err != nil {
