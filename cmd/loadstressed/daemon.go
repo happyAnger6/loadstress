@@ -6,12 +6,14 @@ import (
 	"context"
 	"log"
 	"time"
+	"fmt"
+	"sync/atomic"
 
 	"loadstress/client"
 	"loadstress/messages"
-	"fmt"
+	_ "loadstress/client/grpc"
+
 	"github.com/sirupsen/logrus"
-	"go1.12.5.src/go/src/sync/atomic"
 )
 
 const (
@@ -28,7 +30,7 @@ var (
 	numConn   = flag.Int("c", 1, "The number of parallel connections.")
 	duration  = flag.Int("d", 60, "Benchmark duration in seconds")
 	driver_name = flag.String("driver_name", "", "Name of the driver for benchmark profiles.")
-	wg       sync.WaitGroup
+	wg	sync.WaitGroup
 	mu    sync.Mutex
 	testDriver client.Driver
 	restulCh = make(chan *loadstress_messages.CallResult, 100)
@@ -54,6 +56,7 @@ func main() {
 	status = STATUS_RUNNING
 	css := buildConnections(connectContext)
 	for _, cs := range css {
+		wg.Add(1)
 		go runWithConnection(deadlineContext, cs)
 	}
 
@@ -94,15 +97,22 @@ func buildConnections(ctx context.Context) []client.ClientConnection {
 }
 
 func runWithConnection(ctx context.Context, conn client.ClientConnection) error {
+	defer wg.Done()
+
 	throttle := time.Tick(time.Second)
+	var qwg sync.WaitGroup
 	for {
 		select {
 		case <- ctx.Done():
 			return stop(ctx.Err())
 		case <- throttle:
-			runQps(ctx, conn)
+			qwg.Add(1)
+			runQps(ctx, conn, &wg)
 		}
 	}
+
+	qwg.Wait()
+	return nil
 }
 
 func handleCallError(req *loadstress_messages.SimpleRequest, err error) {
@@ -123,8 +133,8 @@ func sendResult(r *loadstress_messages.CallResult) bool {
 	}
 }
 
-func asynCall(ctx context.Context, conn client.ClientConnection) error {
-	defer wg.Done()
+func asynCall(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitGroup) error {
+	defer _wg.Done()
 
 	req, err :=  conn.BuildReq()
 	if err != nil {
@@ -140,15 +150,20 @@ func asynCall(ctx context.Context, conn client.ClientConnection) error {
 	return nil
 }
 
-func runQps(ctx context.Context, conn client.ClientConnection) error {
+func runQps(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitGroup) error {
+	defer _wg.Done()
+
+	var qwg sync.WaitGroup
 	for i := 0; i < *qps; i++ {
 		select {
 		case <-ctx.Done():
 			return stop(ctx.Err())
 		default:
-			wg.Add(1)
-			go asynCall(ctx, conn)
+			qwg.Add(1)
+			go asynCall(ctx, conn, &qwg)
 		}
 	}
+
+	qwg.Wait()
 	return nil
 }
