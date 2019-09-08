@@ -146,7 +146,6 @@ func grpcCode2RetStatus(code codes.Code) loadstress_messages.RetStatus {
 func (c *GrpcConnection) BuildResp(response *loadstress_messages.SimpleResponse) (*loadstress_messages.CallResult, error){
 	var respMsg GrpcResp
 	json.Unmarshal(response.Payload.Body, &respMsg)
-	fmt.Printf("respMsg.Status:%v\n", respMsg.Status)
 
 	result := loadstress_messages.CallResult{
 		Resp: response,

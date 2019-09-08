@@ -29,6 +29,7 @@ var (
 	qps 	= flag.Int("q", 10, "The number of concurrent RPCs in seconds on each connection.")
 	numConn   = flag.Int("c", 1, "The number of parallel connections.")
 	duration  = flag.Int("d", 60, "Benchmark duration in seconds")
+	callTimeout  = flag.Int("t", 2, "Call timeout in seconds.")
 	driver_name = flag.String("driver_name", "", "Name of the driver for benchmark profiles.")
 	wg	sync.WaitGroup
 	mu    sync.Mutex
