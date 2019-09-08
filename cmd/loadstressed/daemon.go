@@ -33,7 +33,7 @@ var (
 	wg	sync.WaitGroup
 	mu    sync.Mutex
 	testDriver client.Driver
-	restulCh = make(chan *loadstress_messages.CallResult, 100)
+	restulCh = make(chan *loadstress_messages.CallResult, 100000)
 	status = STATUS_INT
 	logger = logrus.New()
 )
@@ -114,7 +114,7 @@ func runWithConnection(ctx context.Context, conn client.ClientConnection) error 
 			return stop(ctx.Err())
 		case <- throttle:
 			qwg.Add(1)
-			runQps(ctx, conn, &wg)
+			runQps(ctx, conn, &qwg)
 		}
 	}
 
