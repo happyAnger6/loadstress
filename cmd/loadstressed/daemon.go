@@ -83,13 +83,14 @@ func main() {
 			readAllResults(restulCh)
 			close(restulCh)
 			logger.Infof("finished loadstess.")
+			fmt.Printf("total calls:%v\n", testDriver.GetID())
+			atomic.CompareAndSwapInt32(&status, STATUS_STOPPING, STATUS_STOPPED)
 			return
 		case r := <-restulCh:
 			fmt.Printf("callId:%d result:%v elapsed:%d ns\n", r.Resp.RespId, r.Status, r.Elapsed)
 		}
 	}
 
-	atomic.CompareAndSwapInt32(&status, STATUS_STOPPING, STATUS_STOPPED)
 	return
 }
 
