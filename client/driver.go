@@ -23,6 +23,7 @@ type ConnectionDriver interface {
 
 type Driver interface {
 	Name() string
+	GetID() (int64)
 	ConnectionDriver
 }
 

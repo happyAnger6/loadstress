@@ -63,6 +63,10 @@ func (d* Driver) GenerateID() int64 {
 	return atomic.AddInt64(&d.id, 1)
 }
 
+func (d *Driver) GetID() int64 {
+	return d.id
+}
+
 func (d *Driver) CreateConnection(ctx context.Context, opts *client.CreateOpts) (client.ClientConnection, error){
 	host := d.host
 	port := d.port
