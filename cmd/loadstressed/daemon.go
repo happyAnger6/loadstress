@@ -42,13 +42,25 @@ func init() {
 	flag.StringVar(&driverOpts.Host, "server", "127.0.0.1", "Server to connect to.")
 	flag.IntVar(&driverOpts.Port, "port", 50051, "Port to connect to.")
 }
+
+func readAllResults(rCh chan *loadstress_messages.CallResult) {
+	for {
+		select {
+		case r := <-rCh:
+			fmt.Printf("callId:%d result:%v elapsed:%d ns\n", r.Resp.RespId, r.Status, r.Elapsed)
+		default:
+			fmt.Printf("result ch emplty.\n")
+			return
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
 
 	testDriver, _ = client.GetDriver(*driver_name, &driverOpts)
 	connectContext, connectCancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
 	defer connectCancel()
-
 	deadline := time.Duration(*duration) * time.Second
 	deadlineContext, deadlineCancel := context.WithDeadline(context.Background(), time.Now().Add(deadline))
 	defer deadlineCancel()
@@ -65,6 +77,7 @@ func main() {
 		case <-deadlineContext.Done():
 			stop(deadlineContext.Err())
 			wg.Wait()
+			readAllResults(restulCh)
 			close(restulCh)
 			logger.Infof("finished loadstess.")
 			return
