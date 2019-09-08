@@ -60,14 +60,16 @@ func main() {
 	flag.Parse()
 
 	testDriver, _ = client.GetDriver(*driver_name, &driverOpts)
+	status = STATUS_RUNNING
+
 	connectContext, connectCancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
 	defer connectCancel()
+	css := buildConnections(connectContext)
+
 	deadline := time.Duration(*duration) * time.Second
 	deadlineContext, deadlineCancel := context.WithDeadline(context.Background(), time.Now().Add(deadline))
 	defer deadlineCancel()
 
-	status = STATUS_RUNNING
-	css := buildConnections(connectContext)
 	for _, cs := range css {
 		wg.Add(1)
 		go runWithConnection(deadlineContext, cs)
