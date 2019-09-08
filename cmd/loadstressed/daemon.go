@@ -130,7 +130,8 @@ func runWithConnection(ctx context.Context, conn client.ClientConnection) error 
 		select {
 		case <- ctx.Done():
 			return stop(ctx.Err())
-		case <- throttle:
+		case t := <- throttle:
+			fmt.Printf("time omit:%v\n",t)
 			qwg.Add(1)
 			runQps(ctx, conn, &qwg)
 		}
@@ -179,6 +180,7 @@ func asynCall(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitG
 	return nil
 }
 
+var g_qps int
 func runQps(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitGroup) error {
 	defer _wg.Done()
 	var qwg sync.WaitGroup
@@ -188,11 +190,12 @@ func runQps(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitGro
 			return stop(ctx.Err())
 		default:
 			start := time.Now()
+			g_qps++
 			for i := 0; i < *qps; i++ {
 				qwg.Add(1)
 				go asynCall(ctx, conn, &qwg)
 			}
-			logger.Infof("qps cost:%d.\n", time.Now().Sub(start))
+			logger.Infof("%d qps cost:%d.\n", g_qps, time.Now().Sub(start))
 	}
 
 	qwg.Wait()
