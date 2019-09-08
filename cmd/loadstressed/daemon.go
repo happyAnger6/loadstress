@@ -89,7 +89,7 @@ func buildConnections(ctx context.Context) []client.ClientConnection {
 	var err error
 
 	var optMap = map[string]interface{}{}
-	optMap["timeout"] = 5
+	optMap["timeout"] = int64(5)
 	opts := client.CreateOpts{
 		optMap,
 	}

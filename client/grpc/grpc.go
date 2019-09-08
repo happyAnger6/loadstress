@@ -11,6 +11,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
+	spb "google.golang.org/genproto/googleapis/rpc/status"
 	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 	"github.com/square/go-jose/json"
 	"google.golang.org/grpc/codes"
@@ -30,7 +31,7 @@ type GrpcConnection struct {
 
 type GrpcResp struct {
 	RespMsg string
-	Status *status.Status
+	Status *spb.Status
 }
 
 func init() {
@@ -65,7 +66,7 @@ func (d* Driver) GenerateID() int64 {
 func (d *Driver) CreateConnection(ctx context.Context, opts *client.CreateOpts) (client.ClientConnection, error){
 	host := d.host
 	port := d.port
-	addr := fmt.Sprintf("%s:%s", host, port)
+	addr := fmt.Sprintf("%s:%d", host, port)
 	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("NewClientConn(%q) failed to create a ClientConn %v", addr, err)
@@ -100,11 +101,16 @@ func (c *GrpcConnection) BuildReq() (*loadstress_messages.SimpleRequest, error) 
 }
 
 const defaultName string = "anger6"
+
 func (c *GrpcConnection) Call(ctx context.Context, request *loadstress_messages.SimpleRequest) (*loadstress_messages.SimpleResponse, error){
 	resp := loadstress_messages.SimpleResponse{
 		RespId: request.ReqId,
 	}
+	payload := loadstress_messages.Payload{}
+	resp.Payload = &payload
+
 	cc := pb.NewGreeterClient(c.conn)
+
 
 	respMsg := GrpcResp{
 		RespMsg: "",
@@ -113,17 +119,15 @@ func (c *GrpcConnection) Call(ctx context.Context, request *loadstress_messages.
 
 	start := time.Now()
 	r, err := cc.SayHello(ctx, &pb.HelloRequest{Name: defaultName})
-	s, ok := status.FromError(err)
-	if ok {
-		respMsg.Status = s
-	}
+	s, _ := status.FromError(err)
+	respMsg.Status = s.Proto()
 
 	elapse := time.Since(start)
 	resp.Elapse = int64(elapse)
 	respMsg.RespMsg = r.GetMessage()
 	data, err := json.Marshal(respMsg)
-	if err != nil {
-		resp.Payload.Body = data
+	if err == nil {
+		resp.Payload.Body=data
 	}
 	return &resp, nil
 }
@@ -142,11 +146,12 @@ func grpcCode2RetStatus(code codes.Code) loadstress_messages.RetStatus {
 func (c *GrpcConnection) BuildResp(response *loadstress_messages.SimpleResponse) (*loadstress_messages.CallResult, error){
 	var respMsg GrpcResp
 	json.Unmarshal(response.Payload.Body, &respMsg)
+	fmt.Printf("respMsg.Status:%v\n", respMsg.Status)
 
 	result := loadstress_messages.CallResult{
 		Resp: response,
-		Errmsg: respMsg.Status.Err().Error(),
-		Status: grpcCode2RetStatus(respMsg.Status.Code()),
+		Errmsg: respMsg.Status.GetMessage(),
+		Status: grpcCode2RetStatus(codes.Code(respMsg.Status.GetCode())),
 		Elapsed: response.Elapse,
 	}
 	return &result, nil
