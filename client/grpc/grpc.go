@@ -107,7 +107,7 @@ func (c *GrpcConnection) Call(ctx context.Context, request *loadstress_messages.
 	cc := pb.NewGreeterClient(c.conn)
 
 	respMsg := GrpcResp{
-		RespMsg: nil,
+		RespMsg: "",
 		Status: nil,
 	}
 
