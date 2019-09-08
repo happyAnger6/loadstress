@@ -87,8 +87,15 @@ func stop(err error) error{
 func buildConnections(ctx context.Context) []client.ClientConnection {
 	ccs := make([]client.ClientConnection, *numConn)
 	var err error
+
+	var optMap = map[string]interface{}{}
+	optMap["timeout"] = 5
+	opts := client.CreateOpts{
+		optMap,
+	}
+
 	for i := range ccs {
-		ccs[i], err = testDriver.CreateConnection(ctx, nil)
+		ccs[i], err = testDriver.CreateConnection(ctx, &opts)
 		if err != nil {
 			log.Fatalf("create connection:%d failed:%v.", i, err)
 		}
