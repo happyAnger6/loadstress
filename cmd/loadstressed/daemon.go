@@ -66,7 +66,7 @@ func main() {
 	defer connectCancel()
 	css := buildConnections(connectContext)
 
-	deadline := time.Duration(*duration) * time.Second
+	deadline := time.Duration(*duration+1) * time.Second
 	deadlineContext, deadlineCancel := context.WithDeadline(context.Background(), time.Now().Add(deadline))
 	defer deadlineCancel()
 
