@@ -180,16 +180,18 @@ func asynCall(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitG
 
 func runQps(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitGroup) error {
 	defer _wg.Done()
-
 	var qwg sync.WaitGroup
-	for i := 0; i < *qps; i++ {
-		select {
+
+	select {
 		case <-ctx.Done():
 			return stop(ctx.Err())
 		default:
-			qwg.Add(1)
-			go asynCall(ctx, conn, &qwg)
-		}
+			start := time.Now()
+			for i := 0; i < *qps; i++ {
+				qwg.Add(1)
+				go asynCall(ctx, conn, &qwg)
+			}
+			logger.Infof("qps cost:%d.\n", time.Now().Sub(start))
 	}
 
 	qwg.Wait()
