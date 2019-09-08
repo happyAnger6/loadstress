@@ -157,13 +157,17 @@ func sendResult(r *loadstress_messages.CallResult) bool {
 func asynCall(ctx context.Context, conn client.ClientConnection, _wg *sync.WaitGroup) error {
 	defer _wg.Done()
 
+	timeDuration := time.Duration(*callTimeout)
+	timeoutCtx, timeoutCancel := context.WithDeadline(context.Background(), time.Now().Add(timeDuration*time.Second))
+	defer timeoutCancel()
+
 	req, err :=  conn.BuildReq()
 	if err != nil {
 		handleCallError(req, err)
 		return err
 	}
 
-	resp, _ := conn.Call(ctx, req)
+	resp, _ := conn.Call(timeoutCtx, req)
 
 	callResult, _ := conn.BuildResp(resp)
 	sendResult(callResult)
