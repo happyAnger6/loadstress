@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	STATUS_INT int32 = 0
+	STATUS_INT int32 = iota
 	STATUS_STARTING
 	STATUS_RUNNING
 	STATUS_STOPPING
@@ -87,6 +87,8 @@ func main() {
 		}
 	}
 
+	atomic.CompareAndSwapInt32(&status, STATUS_STOPPING, STATUS_STOPPED)
+	return
 }
 
 func stop(err error) error{
@@ -94,7 +96,6 @@ func stop(err error) error{
 	if(!atomic.CompareAndSwapInt32(&status, STATUS_RUNNING, STATUS_STOPPING)){
 		return nil
 	}
-	atomic.StoreInt32(&status, STATUS_STOPPED)
 	return nil
 }
 
